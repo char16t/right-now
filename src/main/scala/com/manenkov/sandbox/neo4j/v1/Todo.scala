@@ -202,7 +202,7 @@ object Todo:
     estimate = 10.0
   )
 
-  for {
+  val r = for {
     task <- Todo.createTask(nt)
     st1 <- Todo.createSubTask(task.elementId, st.copy(title = "S1"))
     st2 <- Todo.createSubTask(task.elementId, st.copy(title = "S2"))
@@ -212,8 +212,11 @@ object Todo:
     _ <- Todo.createSubTask(sst2.elementId, st.copy(title = "SS31"))
     _ <- Todo.createSubTask(sst2.elementId, st.copy(title = "SS32"))
     _ <- Todo.updateEstimate(task.elementId, 100)
+    _ <- Todo.updateEstimate(sst2.elementId, 10)
+    tasks <- Todo.todoList(task.elementId)
     _ <- Todo.deleteTask(sst2.elementId)
     _ <- Todo.deleteTask(st1.elementId)
     _ <- Todo.deleteTask(task.elementId)
-  } yield task
+  } yield tasks
+  print(r)
 
