@@ -114,7 +114,7 @@ object Todo:
       createdTask
     }
 
-  def updateEstimate(taskId: String, estimate: Double) =
+  def updateEstimate(taskId: String, estimate: Double): Either[Throwable, Unit] =
     withTransaction { tx =>
       tx.run(UPDATE_ESTIMATE_QUERY, queryPrams(
         "taskId" -> taskId,
