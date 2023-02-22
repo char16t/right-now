@@ -3,6 +3,7 @@ package com.manenkov.sandbox.neo4j.v1
 import com.manenkov.sandbox.neo4j.Task
 import org.neo4j.driver.{AuthTokens, Driver, GraphDatabase, Record, Result, Session, Transaction, Value}
 
+import java.time.{ZoneId, ZonedDateTime}
 import java.util
 
 case class Task(
@@ -11,7 +12,8 @@ case class Task(
                  expand: Boolean,
                  `type`: String,
                  done: Boolean,
-                 estimate: Double
+                 estimate: Double,
+                 due: ZonedDateTime
                ):
   def this(elementId: String, record: Value) = this(
     elementId,
@@ -19,7 +21,8 @@ case class Task(
     record.get("expand").asBoolean(),
     record.get("type").asString(),
     record.get("done").asBoolean(),
-    record.get("estimate").asDouble()
+    record.get("estimate").asDouble(),
+    record.get("due").asZonedDateTime()
   )
 
 object Todo:
@@ -39,6 +42,7 @@ object Todo:
   private val DELETE_ROOT_TASK_QUERY = readQuery("deleteRootTask")
   private val REORDER_RELATIONSHIPS = readQuery("reorderRelationships")
   private val UPDATE_ESTIMATE_QUERY = readQuery("updateEstimate")
+  private val UPDATE_DUE_QUERY = readQuery("updateDue")
 
   private def readQuery(name: String): String =
     import scala.io.Source
@@ -90,7 +94,8 @@ object Todo:
         "expand" -> task.expand,
         "type" -> task.`type`,
         "done" -> task.done,
-        "estimate" -> task.estimate
+        "estimate" -> task.estimate,
+        "due" -> task.due
       ))
       val record = result.single()
       new Task(record.get("id").asString(), record.get("task"))
@@ -104,7 +109,8 @@ object Todo:
         "expand" -> task.expand,
         "type" -> task.`type`,
         "done" -> task.done,
-        "estimate" -> task.estimate
+        "estimate" -> task.estimate,
+        "due" -> task.due
       ))
       val record = result.single()
       val createdTask = new Task(record.get("id").asString(), record.get("task"))
@@ -119,6 +125,17 @@ object Todo:
       tx.run(UPDATE_ESTIMATE_QUERY, queryPrams(
         "taskId" -> taskId,
         "newEstimate" -> estimate
+      ))
+      tx.run(RECALC_ANCESTORS_QUERY, queryPrams(
+        "subId" -> taskId
+      ))
+    }
+
+  def updateDue(taskId: String, due: ZonedDateTime): Either[Throwable, Unit] =
+    withTransaction { tx =>
+      tx.run(UPDATE_DUE_QUERY, queryPrams(
+        "taskId" -> taskId,
+        "newDue" -> due
       ))
       tx.run(RECALC_ANCESTORS_QUERY, queryPrams(
         "subId" -> taskId
@@ -190,7 +207,8 @@ object Todo:
     expand = true,
     `type` = "SET",
     done = false,
-    estimate = 0.0
+    estimate = 0.0,
+    due = ZonedDateTime.now(ZoneId.systemDefault())
   )
 
   val st = Task(
@@ -199,24 +217,28 @@ object Todo:
     expand = true,
     `type` = "SET",
     done = false,
-    estimate = 10.0
+    estimate = 10.0,
+    due = ZonedDateTime.now(ZoneId.systemDefault()).plusDays(2)
   )
 
   val r = for {
     task <- Todo.createTask(nt)
-    st1 <- Todo.createSubTask(task.elementId, st.copy(title = "S1"))
-    st2 <- Todo.createSubTask(task.elementId, st.copy(title = "S2"))
-    _ <- Todo.createSubTask(st1.elementId, st.copy(title = "SS1"))
-    sst2 <- Todo.createSubTask(st1.elementId, st.copy(title = "SS2"))
-    _ <- Todo.createSubTask(st1.elementId, st.copy(title = "SS3"))
-    _ <- Todo.createSubTask(sst2.elementId, st.copy(title = "SS31"))
-    _ <- Todo.createSubTask(sst2.elementId, st.copy(title = "SS32"))
+    st1 <- Todo.createSubTask(task.elementId, st.copy(title = "S1", due = ZonedDateTime.from(st.due).plusDays(1)))
+    st2 <- Todo.createSubTask(task.elementId, st.copy(title = "S2", due = ZonedDateTime.from(st.due).plusDays(2)))
+    _ <- Todo.createSubTask(st1.elementId, st.copy(title = "SS1", due = ZonedDateTime.from(st1.due).plusDays(1)))
+    sst2 <- Todo.createSubTask(st1.elementId, st.copy(title = "SS2", due = ZonedDateTime.from(st1.due).plusDays(2)))
+    _ <- Todo.createSubTask(st1.elementId, st.copy(title = "SS3", due = ZonedDateTime.from(st1.due).plusDays(3)))
+    _ <- Todo.createSubTask(sst2.elementId, st.copy(title = "SS31", due = ZonedDateTime.from(sst2.due).plusDays(1)))
+    _ <- Todo.createSubTask(sst2.elementId, st.copy(title = "SS32", due = ZonedDateTime.from(sst2.due).plusDays(2)))
     _ <- Todo.updateEstimate(task.elementId, 100)
     _ <- Todo.updateEstimate(sst2.elementId, 10)
+    _ <- Todo.updateDue(st1.elementId, ZonedDateTime.of(2024, 2, 22, 12, 30, 30, 0, ZoneId.systemDefault()))
     tasks <- Todo.todoList(task.elementId)
-    _ <- Todo.deleteTask(sst2.elementId)
-    _ <- Todo.deleteTask(st1.elementId)
-    _ <- Todo.deleteTask(task.elementId)
+//    _ <- Todo.deleteTask(sst2.elementId)
+//    _ <- Todo.deleteTask(st1.elementId)
+//    _ <- Todo.deleteTask(task.elementId)
   } yield tasks
-  print(r)
+  r match
+    case Right(value) => print(value)
+    case Left(e) => throw new Exception(e)
 
