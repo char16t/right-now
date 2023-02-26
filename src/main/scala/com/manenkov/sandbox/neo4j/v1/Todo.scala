@@ -1,9 +1,8 @@
 package com.manenkov.sandbox.neo4j.v1
 
-import com.manenkov.sandbox.neo4j.Task
 import org.neo4j.driver.{AuthTokens, Driver, GraphDatabase, Record, Result, Session, Transaction, Value}
 
-import java.time.{ZoneId, ZonedDateTime}
+import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
 import java.util
 
 case class Task(
@@ -13,8 +12,18 @@ case class Task(
                  `type`: String,
                  done: Boolean,
                  estimate: Double,
-                 due: ZonedDateTime
+                 due: ZonedDateTime,
+                 startTo: ZonedDateTime
                ):
+  def this(
+    elementId: String,
+    title: String,
+    expand: Boolean,
+    `type`: String,
+    done: Boolean,
+    estimate: Double,
+    due: ZonedDateTime,
+  ) = this(elementId, title, expand, `type`, done, estimate, due, due.minusSeconds(Math.round(estimate)))
   def this(elementId: String, record: Value) = this(
     elementId,
     record.get("title").asString(),
@@ -22,13 +31,14 @@ case class Task(
     record.get("type").asString(),
     record.get("done").asBoolean(),
     record.get("estimate").asDouble(),
-    record.get("due").asZonedDateTime()
+    record.get("due").asZonedDateTime(),
+    record.get("startTo").asZonedDateTime()
   )
 
 object Todo:
-  private val uri = "neo4j+s://c71aab36.databases.neo4j.io"
+  private val uri = "neo4j://localhost" // "neo4j+s://c71aab36.databases.neo4j.io"
   private val user = "neo4j"
-  private val password = "atvUqW3hIaPC66fQj9dGTH7jS-dqSbLjhqG_YyOCfGk"
+  private val password = "12345678" // "atvUqW3hIaPC66fQj9dGTH7jS-dqSbLjhqG_YyOCfGk"
   private val driver = GraphDatabase.driver(uri, AuthTokens.basic(user, password))
   private val GET_TASK_BY_ELEMENT_ID_QUERY = readQuery("getTaskByElementId")
   private val CREATE_TASK_QUERY = readQuery("createTask")
@@ -95,7 +105,8 @@ object Todo:
         "type" -> task.`type`,
         "done" -> task.done,
         "estimate" -> task.estimate,
-        "due" -> task.due
+        "due" -> task.due,
+        "startTo" -> task.startTo
       ))
       val record = result.single()
       new Task(record.get("id").asString(), record.get("task"))
@@ -110,7 +121,8 @@ object Todo:
         "type" -> task.`type`,
         "done" -> task.done,
         "estimate" -> task.estimate,
-        "due" -> task.due
+        "due" -> task.due,
+        "startTo" -> task.startTo
       ))
       val record = result.single()
       val createdTask = new Task(record.get("id").asString(), record.get("task"))
@@ -201,7 +213,7 @@ object Todo:
   //    case Right(tasks) => tasks.foreach(println)
   //    case Left(e) => throw new Exception("Internal error", e)
 
-  val nt = Task(
+  val nt = new Task(
     elementId = "",
     title = "Root task",
     expand = true,
@@ -211,28 +223,35 @@ object Todo:
     due = ZonedDateTime.now(ZoneId.systemDefault())
   )
 
-  val st = Task(
+  val st = new Task(
     elementId = "",
     title = "TSK40",
     expand = true,
     `type` = "SET",
     done = false,
     estimate = 10.0,
-    due = ZonedDateTime.now(ZoneId.systemDefault()).plusDays(2)
+    due = ZonedDateTime.now(ZoneId.systemDefault())
   )
+
+  def cp(st: Task, title: String, due: ZonedDateTime) = {
+    st.copy(
+      title = title,
+      due = due,
+      startTo = due.minusSeconds(Math.round(st.estimate)))
+  }
 
   val r = for {
     task <- Todo.createTask(nt)
-    st1 <- Todo.createSubTask(task.elementId, st.copy(title = "S1", due = ZonedDateTime.from(st.due).plusDays(1)))
-    st2 <- Todo.createSubTask(task.elementId, st.copy(title = "S2", due = ZonedDateTime.from(st.due).plusDays(2)))
-    _ <- Todo.createSubTask(st1.elementId, st.copy(title = "SS1", due = ZonedDateTime.from(st1.due).plusDays(1)))
-    sst2 <- Todo.createSubTask(st1.elementId, st.copy(title = "SS2", due = ZonedDateTime.from(st1.due).plusDays(2)))
-    _ <- Todo.createSubTask(st1.elementId, st.copy(title = "SS3", due = ZonedDateTime.from(st1.due).plusDays(3)))
-    _ <- Todo.createSubTask(sst2.elementId, st.copy(title = "SS31", due = ZonedDateTime.from(sst2.due).plusDays(1)))
-    _ <- Todo.createSubTask(sst2.elementId, st.copy(title = "SS32", due = ZonedDateTime.from(sst2.due).plusDays(2)))
+    st1 <- Todo.createSubTask(task.elementId, cp(st, "S1", st.due.plusDays(1)))
+    st2 <- Todo.createSubTask(task.elementId, cp(st, "S2", st.due.plusDays(2)))
+    _ <- Todo.createSubTask(st1.elementId, cp(st1, "SS1", st1.due.plusDays(1)))
+    sst2 <- Todo.createSubTask(st1.elementId, cp(st1, "SS2", st1.due.plusDays(2)))
+    _ <- Todo.createSubTask(st1.elementId, cp(st1, "SS3", st1.due.plusDays(3)))
+    _ <- Todo.createSubTask(sst2.elementId, cp(sst2, "SS21", st1.due.plusDays(1)))
+    _ <- Todo.createSubTask(sst2.elementId, cp(sst2, "SS22", st1.due.plusDays(2)))
     _ <- Todo.updateEstimate(task.elementId, 100)
     _ <- Todo.updateEstimate(sst2.elementId, 10)
-    _ <- Todo.updateDue(st1.elementId, ZonedDateTime.of(2024, 2, 22, 12, 30, 30, 0, ZoneId.systemDefault()))
+    _ <- Todo.updateDue(st1.elementId, ZonedDateTime.parse("2024-02-22T00:00:00.000+03:00"))
     tasks <- Todo.todoList(task.elementId)
 //    _ <- Todo.deleteTask(sst2.elementId)
 //    _ <- Todo.deleteTask(st1.elementId)
