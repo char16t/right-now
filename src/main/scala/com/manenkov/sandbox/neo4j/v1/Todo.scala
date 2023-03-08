@@ -13,7 +13,8 @@ case class Task(
                  done: Boolean,
                  estimate: Double,
                  due: ZonedDateTime,
-                 startTo: ZonedDateTime
+                 startTo: ZonedDateTime,
+                 availableFrom: ZonedDateTime,
                ):
   def this(
     elementId: String,
@@ -23,7 +24,18 @@ case class Task(
     done: Boolean,
     estimate: Double,
     due: ZonedDateTime,
-  ) = this(elementId, title, expand, `type`, done, estimate, due, due.minusSeconds(Math.round(estimate)))
+    availableFrom: ZonedDateTime
+  ) = this(
+    elementId,
+    title,
+    expand,
+    `type`,
+    done,
+    estimate,
+    due,
+    due.minusSeconds(Math.round(estimate)),
+    due.minusSeconds(Math.round(estimate)).minusSeconds(3600L * 24)
+  )
   def this(elementId: String, record: Value) = this(
     elementId,
     record.get("title").asString(),
@@ -32,7 +44,8 @@ case class Task(
     record.get("done").asBoolean(),
     record.get("estimate").asDouble(),
     record.get("due").asZonedDateTime(),
-    record.get("startTo").asZonedDateTime()
+    record.get("startTo").asZonedDateTime(),
+    record.get("availableFrom").asZonedDateTime(),
   )
 
 object Todo:
@@ -106,7 +119,8 @@ object Todo:
         "done" -> task.done,
         "estimate" -> task.estimate,
         "due" -> task.due,
-        "startTo" -> task.startTo
+        "startTo" -> task.startTo,
+        "availableFrom" -> task.availableFrom,
       ))
       val record = result.single()
       new Task(record.get("id").asString(), record.get("task"))
@@ -122,7 +136,8 @@ object Todo:
         "done" -> task.done,
         "estimate" -> task.estimate,
         "due" -> task.due,
-        "startTo" -> task.startTo
+        "startTo" -> task.startTo,
+        "availableFrom" -> task.availableFrom,
       ))
       val record = result.single()
       val createdTask = new Task(record.get("id").asString(), record.get("task"))
@@ -220,7 +235,8 @@ object Todo:
     `type` = "SET",
     done = false,
     estimate = 0.0,
-    due = ZonedDateTime.now(ZoneId.systemDefault())
+    due = ZonedDateTime.now(ZoneId.systemDefault()),
+    availableFrom = ZonedDateTime.now(ZoneId.systemDefault()).minusSeconds(3600L * 24),
   )
 
   val st = new Task(
@@ -230,14 +246,17 @@ object Todo:
     `type` = "SET",
     done = false,
     estimate = 10.0,
-    due = ZonedDateTime.now(ZoneId.systemDefault())
+    due = ZonedDateTime.now(ZoneId.systemDefault()),
+    availableFrom = ZonedDateTime.now(ZoneId.systemDefault()).minusSeconds(3600L * 24),
   )
 
   def cp(st: Task, title: String, due: ZonedDateTime) = {
     st.copy(
       title = title,
       due = due,
-      startTo = due.minusSeconds(Math.round(st.estimate)))
+      startTo = due.minusSeconds(Math.round(st.estimate)),
+      availableFrom = due.minusSeconds(Math.round(st.estimate)).minusSeconds(3600L * 24)
+    )
   }
 
   val r = for {

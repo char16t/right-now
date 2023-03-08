@@ -33,21 +33,27 @@ CALL {
   WITH leaf WHERE NOT leaf IN startNodes
   WITH
     apoc.coll.max(collect(leaf.due)) as maxDue,
-    apoc.coll.min(collect(leaf.startTo)) as minStartTo
-  RETURN maxDue, minStartTo
+    apoc.coll.min(collect(leaf.startTo)) as minStartTo,
+    apoc.coll.min(collect(leaf.availableFrom)) as minAvailableFrom
+  RETURN maxDue, minStartTo, minAvailableFrom
 }
 WITH
   collect(sn) as sns2,
   collect(maxDue) as maxDues,
-  collect(minStartTo) as minStartTos
+  collect(minStartTo) as minStartTos,
+  collect(minAvailableFrom) as minAvailableFroms
 WITH
   apoc.coll.zip(sns2, maxDues) as zippedMaxDues,
-  apoc.coll.zip(sns2, minStartTos) as zippedMinStartTos
+  apoc.coll.zip(sns2, minStartTos) as zippedMinStartTos,
+  apoc.coll.zip(sns2, minAvailableFroms) as zippedMinAvailableFroms
 FOREACH(x in zippedMaxDues |
   set head(x).due = x[1]
 )
 FOREACH(x in zippedMinStartTos |
   set head(x).startTo = x[1]
   //set head(x).startTo = head(x).due - duration({ seconds: head(x).estimate })
+)
+FOREACH(x in zippedMinAvailableFroms |
+  set head(x).availableFrom = x[1]
 )
 RETURN *;
