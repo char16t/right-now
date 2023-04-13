@@ -69,7 +69,7 @@ Properties of each task:
  * `due` - deadline date and time
  * `startTo` - the date and time before which you need to start doing the task in order to meet the deadline
 
-Specification:
+Automatically supported restrictions:
 
  * The `estimate` value of each task is equal to the sum of `estimate` of all its subtasks
  * The `due` value of each task is equal to the maximum `due` among all its subtasks
