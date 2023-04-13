@@ -55,6 +55,8 @@ Do this in any order. It's only and one actions avaliable for you right now.
 
 Sequentially complete the remaining tasks that appear in the list. Thus, you have prepared a sandwich unnoticed by yourself. You can also do with complex tasks that you don't fully understand. The system will guide you step by step to the result.
 
+You can also do several independent tasks in parallel. Detailing both will help you see only the actions that are available to you for each of them. It works and is very convenient.
+
 ### Specification
 
 Properties of each task:
