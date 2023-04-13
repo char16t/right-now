@@ -2,6 +2,8 @@ The task list engine implemented using Neo4J. Experimental alternative version o
 
 The main goal of this implementation is to show the user a flat list of those tasks that are available for execution right now. Often tasks from the to-do list depend on each other, so they are presented in the form of a tree. Each task has strictly one parent or exists without a parent. Each task can be collapsed or expanded to provide granularity and the ability to make a more atomic task. Subtasks can be a list or a set. In the first case, they must be executed in order. In the second case, they can be executed in any order. The root task in tree is a "task list".
 
+### Problem and solution
+
 Let's look at the examples:
 
  * Prepare a Mini Pizza Sandwich (`done: false`, `expand: false`, `type: LIST`)
