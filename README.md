@@ -1,4 +1,6 @@
-The task list engine implemented using Neo4J. Experimental alternative version of the [Assistant](https://github.com/char16t/assistant) kernel. All logic, if possible, was implemented at the Neo4j database level. It uses the [APOC](https://neo4j.com/developer/neo4j-apoc/) extension from Neo4J.
+# RightNow Engine
+
+The task list engine implemented using Scala and Neo4J. Experimental alternative version of the [Assistant](https://github.com/char16t/assistant) kernel. All logic, if possible, was implemented at the Neo4j database level. It uses the [APOC](https://neo4j.com/developer/neo4j-apoc/) extension from Neo4J.
 
 The main goal of this implementation is to show the user a flat list of those tasks that are available for execution right now. Often tasks from the to-do list depend on each other, so they are presented in the form of a tree. Each task has strictly one parent or exists without a parent. Each task can be collapsed or expanded to provide granularity and the ability to make a more atomic task. Subtasks can be a list or a set. In the first case, they must be executed in order. In the second case, they can be executed in any order. The root task in tree is a "task list".
 
