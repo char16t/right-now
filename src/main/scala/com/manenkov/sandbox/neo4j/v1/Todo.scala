@@ -36,9 +36,9 @@ case class Task(
   )
 
 object Todo:
-  private val uri = "neo4j://localhost" // "neo4j+s://c71aab36.databases.neo4j.io"
+  private val uri = "neo4j://localhost"
   private val user = "neo4j"
-  private val password = "12345678" // "atvUqW3hIaPC66fQj9dGTH7jS-dqSbLjhqG_YyOCfGk"
+  private val password = "12345678"
   private val driver = GraphDatabase.driver(uri, AuthTokens.basic(user, password))
   private val GET_TASK_BY_ELEMENT_ID_QUERY = readQuery("getTaskByElementId")
   private val CREATE_TASK_QUERY = readQuery("createTask")
