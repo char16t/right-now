@@ -71,7 +71,7 @@ Sequentially complete the remaining tasks that appear in the list. Thus, you hav
 
 You can also do several independent tasks in parallel. Detailing both will help you see only the actions that are available to you for each of them. It works and is very convenient.
 
-### Automatic update or `estimate` and `due` fields
+### Automatic update of `estimate` and `due` fields
 
 Each task has a time estimate in seconds and a deadline. When you add a task or change an estimate, all child and parent tasks also change time estimates and deadlines.
 
