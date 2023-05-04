@@ -1,4 +1,4 @@
-# RightNow Engine
+# right-now
 
 The task list engine implemented using Scala and Neo4J. Experimental alternative version of the [Assistant](https://github.com/char16t/assistant) kernel. All logic, if possible, was implemented at the Neo4j database level. It uses the [APOC](https://neo4j.com/developer/neo4j-apoc/) extension from Neo4J.
 
@@ -81,4 +81,70 @@ Automatically supported restrictions:
  * The `due` value of each task is equal to the maximum `due` among all its subtasks
  * The `startTo` value of each task is equal to the minimum `startTo` among all its subtasks
 
+### Usage example
 
+```scala
+  val nt = new Task(
+    elementId = "",
+    title = "Root task",
+    expand = true,
+    `type` = "SET",
+    done = false,
+    estimate = 0.0,
+    due = ZonedDateTime.now(ZoneId.systemDefault())
+  )
+
+  val st = new Task(
+    elementId = "",
+    title = "TSK40",
+    expand = true,
+    `type` = "SET",
+    done = false,
+    estimate = 10.0,
+    due = ZonedDateTime.now(ZoneId.systemDefault())
+  )
+
+  def cp(st: Task, title: String, due: ZonedDateTime) = {
+    st.copy(
+      title = title,
+      due = due,
+      startTo = due.minusSeconds(Math.round(st.estimate)))
+  }
+
+  val r = for {
+    task <- Todo.createTask(nt)
+    st1 <- Todo.createSubTask(task.elementId, cp(st, "S1", st.due.plusDays(1)))
+    st2 <- Todo.createSubTask(task.elementId, cp(st, "S2", st.due.plusDays(2)))
+    _ <- Todo.createSubTask(st1.elementId, cp(st1, "SS1", st1.due.plusDays(1)))
+    sst2 <- Todo.createSubTask(st1.elementId, cp(st1, "SS2", st1.due.plusDays(2)))
+    _ <- Todo.createSubTask(st1.elementId, cp(st1, "SS3", st1.due.plusDays(3)))
+    _ <- Todo.createSubTask(sst2.elementId, cp(sst2, "SS21", st1.due.plusDays(1)))
+    _ <- Todo.createSubTask(sst2.elementId, cp(sst2, "SS22", st1.due.plusDays(2)))
+    _ <- Todo.updateEstimate(task.elementId, 100)
+    _ <- Todo.updateEstimate(sst2.elementId, 10)
+    _ <- Todo.updateDue(st1.elementId, ZonedDateTime.parse("2024-02-22T00:00:00.000+03:00"))
+    tasks <- Todo.todoList(task.elementId)
+//    _ <- Todo.deleteTask(sst2.elementId)
+//    _ <- Todo.deleteTask(st1.elementId)
+//    _ <- Todo.deleteTask(task.elementId)
+  } yield tasks
+  r match
+    case Right(value) => print(value)
+    case Left(e) => throw new Exception(e)
+```
+
+Result in Neo4J:
+
+![Graph in Neo4J](https://raw.githubusercontent.com/char16t/i/master/right-now-data-example.png)
+
+### API
+
+Call `Todo.method`. Avaliable methods:
+ 
+ * `def todoList(rootId: String): Either[Throwable, Seq[Task]]` &ndash; get flatten list of tasks for right now execution
+ * `def getTaskByElementId(elementId: String): Either[Throwable, Task]` &ndash; get task by id
+ * `def createTask(task: Task): Either[Throwable, Task]` &ndash; create task
+ * `def createSubTask(parentId: String, task: Task): Either[Throwable, Task]` &ndash; create subtask for other task
+ * `def updateEstimate(taskId: String, estimate: Double): Either[Throwable, Unit]` &ndash; update estimate for given task
+ * `def updateDue(taskId: String, due: ZonedDateTime): Either[Throwable, Unit]` &ndash; update estimate for given task
+ * `def deleteTask(taskId: String): Either[Throwable, Any]` &ndash; delete task by id
