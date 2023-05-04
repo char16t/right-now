@@ -4,6 +4,18 @@ The task list engine implemented using Scala and Neo4J. Experimental alternative
 
 The main goal of this implementation is to show the user a flat list of those tasks that are available for execution right now. Often tasks from the to-do list depend on each other, so they are presented in the form of a tree. Each task has strictly one parent or exists without a parent. Each task can be collapsed or expanded to provide granularity and the ability to make a more atomic task. Subtasks can be a list or a set. In the first case, they must be executed in order. In the second case, they can be executed in any order. The root task in tree is a "task list".
 
+### API
+
+Call `Todo.method`. Avaliable methods:
+ 
+ * `def todoList(rootId: String): Either[Throwable, Seq[Task]]` &ndash; get flatten list of tasks for right now execution
+ * `def getTaskByElementId(elementId: String): Either[Throwable, Task]` &ndash; get task by id
+ * `def createTask(task: Task): Either[Throwable, Task]` &ndash; create task
+ * `def createSubTask(parentId: String, task: Task): Either[Throwable, Task]` &ndash; create subtask for other task
+ * `def updateEstimate(taskId: String, estimate: Double): Either[Throwable, Unit]` &ndash; update estimate for given task
+ * `def updateDue(taskId: String, due: ZonedDateTime): Either[Throwable, Unit]` &ndash; update estimate for given task
+ * `def deleteTask(taskId: String): Either[Throwable, Any]` &ndash; delete task by id
+
 ### Problem and solution
 
 Let's look at the examples:
@@ -59,7 +71,45 @@ Sequentially complete the remaining tasks that appear in the list. Thus, you hav
 
 You can also do several independent tasks in parallel. Detailing both will help you see only the actions that are available to you for each of them. It works and is very convenient.
 
-Bonus: Each task has a time estimate in seconds and a deadline. When you add a task or change an estimate, all child and parent tasks also change time estimates and deadlines.
+### Automatic update or `estimate` and `due` fields
+
+Each task has a time estimate in seconds and a deadline. When you add a task or change an estimate, all child and parent tasks also change time estimates and deadlines.
+
+When the estimate of a task changes, the estimates of its subtasks are updated according to the distribution that was before. For example, if the estimates were distributed as follows:
+
+```
+* A (100)
+  * AA (30)
+  * AB (20)
+  * AC (50)
+``` 
+
+if you change the estimate of A from 100 to 10, you will get:
+
+```
+* A (10)
+  * AA (3)
+  * AB (2)
+  * AC (5)
+``` 
+
+If child tasks contain subtasks, they will be recalculated according to the same rule. 
+
+```
+        newEstimate + oldEstimate
+coef = ----------------------------
+               oldEstimate
+```
+
+Each estimate must be multiplied by `coef'. Similarly with due dates. Coefficient for revaluation of due dates:
+
+```
+         estimate + (dueAfter - dueBefore)
+ coef =  ---------------------------------
+                     estimate
+```
+
+Time estimates and due dates for parent tasks are also recalculates.
 
 ### Specification
 
@@ -136,15 +186,3 @@ Automatically supported restrictions:
 Result in Neo4J:
 
 ![Graph in Neo4J](https://raw.githubusercontent.com/char16t/i/master/right-now-data-example.png)
-
-### API
-
-Call `Todo.method`. Avaliable methods:
- 
- * `def todoList(rootId: String): Either[Throwable, Seq[Task]]` &ndash; get flatten list of tasks for right now execution
- * `def getTaskByElementId(elementId: String): Either[Throwable, Task]` &ndash; get task by id
- * `def createTask(task: Task): Either[Throwable, Task]` &ndash; create task
- * `def createSubTask(parentId: String, task: Task): Either[Throwable, Task]` &ndash; create subtask for other task
- * `def updateEstimate(taskId: String, estimate: Double): Either[Throwable, Unit]` &ndash; update estimate for given task
- * `def updateDue(taskId: String, due: ZonedDateTime): Either[Throwable, Unit]` &ndash; update estimate for given task
- * `def deleteTask(taskId: String): Either[Throwable, Any]` &ndash; delete task by id
